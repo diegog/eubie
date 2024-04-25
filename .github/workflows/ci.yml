@@ -1,0 +1,23 @@
+name: Continuous Integration
+
+# cancel previous runs that are still running, saves resources and prevents deploying wrong version
+concurrency:
+  group: ci-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+jobs:
+    retrieve:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: actions/setup-python@v5
+              with:
+                python-version: '3.10'
+            - run: pip install -r requirements.txt
+            - run: for f in ./retrieval/*.py; do python3 "$f"; done
+            - run: ls ./documents
