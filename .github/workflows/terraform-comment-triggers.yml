@@ -1,0 +1,45 @@
+name: Terraform Comment Triggers
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  setup-env:
+    runs-on: ubuntu-latest
+    if: (contains(github.event.comment.body, 'terraform plan') || contains(github.event.comment.body, 'terraform apply')) && github.event.issue.pull_request
+    steps:
+      - name: "Update comment"
+        if: (contains(github.event.comment.body, 'terraform plan') || contains(github.event.comment.body, 'terraform apply')) && github.event.issue.pull_request
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { issue: { number: issue_number }, repo: { owner, repo }, payload  } = context;
+            await github.rest.issues.updateComment({
+              owner,
+              repo,
+              comment_id: payload.comment.id,
+              body: [
+                `> ${payload.comment.body}`,
+                `Setting up terraform environment...`,
+                `[View job](https://github.com/${owner}/${repo}/actions/runs/${context.runId})`
+              ].filter(Boolean).join('\n\n')
+            });
+      - name: Get PR SHA
+        uses: actions/github-script@v7
+        id: get-pr
+        with:
+          script: |
+            const request = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            }
+            core.info(`Getting PR #${request.pull_number} from ${request.owner}/${request.repo}`)
+            try {
+              const result = await github.rest.pulls.get(request);
+              return result.data;
+            } catch (err) {
+              core.setFailed(`Request failed with error ${err}`);
+            }

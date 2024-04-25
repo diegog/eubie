@@ -34,13 +34,13 @@ For sake of learning and fun, I am limiting myself to use terraform and infrastr
     - [ ] AI infrastructure
     - [ ] Azure Functions
 - [ ] Create functions to retrieve data from external sources
-    - [ ] Readme from GitHub
+    - [x] Readme from GitHub
     - [ ] Documents from Google
     - [ ] Documents from Confluence
     - [ ] Slack message history
 - [ ] Github actions
     - [ ] Runs terraform plan / apply
-    - [ ] Runs retrieval functions
+    - [x] Runs retrieval functions
     - [ ] Uploads data to Azure
 - [ ] Azure Functions (try to do this all in terraform)
     - [ ] Run vectorization of documents when uploaded
