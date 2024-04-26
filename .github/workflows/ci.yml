@@ -11,13 +11,43 @@ on:
     branches:
       - master
 jobs:
-    retrieve:
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-python@v5
-              with:
-                python-version: '3.10'
-            - run: pip install -r requirements.txt
-            - run: for f in ./retrieval/*.py; do python3 "$f"; done
-            - run: ls ./documents
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - run: for f in ./retrieval/*.py; do python3 "$f"; done
+      - run: ls ./documents
+    
+  upload-retrieved-documents:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - run: pip install -r requirements.txt
+
+      - run: for f in ./retrieval/*.py; do python3 "$f"; done
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get resource group
+        id: rg
+        run: echo "name=$(az group list --query "[?contains(name, 'diegog')].name" | jq -c '.[0]')" >> $GITHUB_OUTPUT
+
+      - name: Get Storage Account
+        id: sa
+        run: echo "name=$(az storage account list --resource-group ${{ steps.rg.outputs.name }} | jq -c '.[0].name')" >> $GITHUB_OUTPUT
+
+      - name: Upload documents
+        run: az storage blob upload-batch --account-name ${{ steps.sa.outputs.name }} --destination document-container --source ./documents
