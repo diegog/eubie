@@ -14,9 +14,9 @@ defaults:
     working-directory: terraform
 
 jobs:
-  terraform:
+  plan:
     runs-on: ubuntu-latest
-    if: (contains(github.event.comment.body, 'terraform plan') || contains(github.event.comment.body, 'terraform apply')) && github.event.issue.pull_request
+    if: contains(github.event.comment.body, 'terraform plan') && github.event.issue.pull_request
     steps:
       - name: "Update comment"
         if: (contains(github.event.comment.body, 'terraform plan') || contains(github.event.comment.body, 'terraform apply')) && github.event.issue.pull_request
@@ -35,23 +35,7 @@ jobs:
               ].filter(Boolean).join('\n\n')
             });
 
-      - uses: actions/checkout@v4
-
-      - run: |
-          git fetch origin pull/${{ github.event.issue.number }}/head:pr-find-commit
-          git checkout pr-find-commit
-
-      - uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - uses: hashicorp/setup-terraform@v3
-
-      - run: terraform init
-
-      - if: (contains(github.event.comment.body, 'terraform plan') || contains(github.event.comment.body, 'terraform apply')) && github.event.issue.pull_request
-        continue-on-error: true
-        run: terraform plan -no-color
+      - uses: ./terraform-plan.yml
         id: plan
 
       - name: Success message
@@ -71,9 +55,33 @@ jobs:
                 `[View job](https://github.com/${owner}/${repo}/actions/runs/${context.runId})`
               ].filter(Boolean).join('\n\n')
             });
-      
+
+      - name: Failure message
+        if: steps.apply.outcome == 'failure'
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            const { repo: { owner, repo }, payload  } = context;
+            const currentComment = await github.rest.issues.getComment({
+              owner, repo, comment_id: payload.comment.id
+            });
+            const body = currentComment.data.body.replace(
+              /^:rocket:.*$/m,
+              ':red_circle: terraform plan failed!'
+            );
+            await github.rest.issues.updateComment({
+              owner,
+              repo,
+              comment_id: payload.comment.id,
+              body
+            });
+
+  apply:
+    runs-on: ubuntu-latest
+    if: contains(github.event.comment.body, 'terraform apply') && github.event.issue.pull_request
+    steps:
       - name: "Update comment"
-        if: contains(github.event.comment.body, 'terraform apply') && github.event.issue.pull_request
         uses: actions/github-script@v7
         with:
           script: |
@@ -89,13 +97,11 @@ jobs:
               ].filter(Boolean).join('\n\n')
             });
 
-      - if: contains(github.event.comment.body, 'terraform apply') && github.event.issue.pull_request
-        continue-on-error: true
-        run: terraform apply -auto-approve -no-color
+      - uses: ./terraform-apply.yml
         id: apply
 
       - name: Success message
-        if: steps.apply.outcome == 'success' && steps.apply.outcome != 'skipped'
+        if: steps.apply.outcome == 'success'
         uses: actions/github-script@v7
         continue-on-error: true
         with:
@@ -116,7 +122,7 @@ jobs:
             });
 
       - name: Failure message
-        if: steps.plan.outcome == 'failure' || steps.apply.outcome == 'failure'
+        if: steps.apply.outcome == 'failure'
         uses: actions/github-script@v7
         continue-on-error: true
         with:
@@ -127,7 +133,7 @@ jobs:
             });
             const body = currentComment.data.body.replace(
               /^:rocket:.*$/m,
-              ':red_circle: terraform plan/apply failed!'
+              ':red_circle: terraform apply failed!'
             );
             await github.rest.issues.updateComment({
               owner,
