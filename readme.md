@@ -39,7 +39,7 @@ The pipeline will consist of the following steps:
 
 Usage of this repository is simple. Add your personal access token to the secrets of the repository and run the github actions. The actions will run terraform to create the infrastructure, retrieve the documents, and then store them in Azure. You can also set a schedule for the action to run at a specific time or interval.
 
-To add your own retrieval functions, simply add a new function in the `retrieval` folder. The function should be a python script that takes no arguments stores any documents in the `documents` folder. The `documents` folder will be uploaded to Azure blob storage. **Note**: The documents folder will not be uploaded to the repository, it will be created during the github action run.
+To add your own retrieval functions, simply add a new function in the `retrieval` folder. The function should be a bash script that takes no arguments and stores any documents in the `documents` folder. The `documents` folder will be uploaded to Azure blob storage. **Note**: The documents folder will not be uploaded to the repository, it will be created during the github action run.
 
 ## TODO
 

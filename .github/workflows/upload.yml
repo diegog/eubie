@@ -1,0 +1,34 @@
+name: Upload files to azure
+
+on:
+  workflow_dispatch:
+
+permissions: 
+  contents: read
+  id-token: write
+  pull-requests: write
+
+jobs:
+  upload-retrieved-documents:
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: for f in ./retrieval/*.sh; do bash "$f"; done
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get resource group
+        id: rg
+        run: echo "name=$(az group list --query "[?contains(name, 'diegog')].name" | jq -c '.[0]')" >> $GITHUB_OUTPUT
+
+      - name: Get Storage Account
+        id: sa
+        run: echo "name=$(az storage account list --resource-group ${{ steps.rg.outputs.name }} | jq -c '.[0].name')" >> $GITHUB_OUTPUT
+
+      - name: Upload documents
+        run: az storage blob upload-batch --account-name ${{ steps.sa.outputs.name }} --destination document-container --source ./documents
