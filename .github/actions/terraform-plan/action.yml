@@ -1,0 +1,42 @@
+name: Terraform Plan
+description: Plan Terraform changes
+inputs:
+  AZURE_CREDENTIALS:
+    description: 'Azure credentials'
+    required: true
+  WORKING_DIRECTORY:
+    description: 'Working directory'
+    required: false
+    default: 'terraform'
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Fetch pull request head
+      if: github.event.issue.pull_request
+      shell: bash
+      run: |
+        git fetch origin pull/${{ github.event.issue.number }}/head:pr-find-commit
+        git checkout pr-find-commit
+
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        creds: inputs.AZURE_CREDENTIALS
+      
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Change Directory
+      shell: bash
+      run: cd ${{ inputs.WORKING_DIRECTORY }}
+
+    - name: Initialize Terraform
+      shell: bash
+      run: terraform init
+
+    - name: Apply Terraform changes
+      shell: bash
+      run: terraform plan
