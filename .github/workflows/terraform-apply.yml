@@ -1,8 +1,7 @@
 name: Terraform Apply
 
 on:
-    workflow_dispatch:
-    workflow_call:
+  workflow_dispatch:
 
 permissions: 
   contents: read
@@ -14,22 +13,10 @@ defaults:
     working-directory: terraform
 
 jobs:
-  plan:
+  apply:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - if : github.event.issue.pull_request
-        run: |
-          git fetch origin pull/${{ github.event.issue.number }}/head:pr-find-commit
-          git checkout pr-find-commit
-
-      - uses: azure/login@v2
+      - uses: ./.github/actions/terraform-apply
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - uses: hashicorp/setup-terraform@v3
-
-      - run: terraform init
-
-      - run: terraform apply -auto-approve
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        id: apply
